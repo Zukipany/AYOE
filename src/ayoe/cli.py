@@ -117,6 +117,20 @@ def build_parser() -> argparse.ArgumentParser:
         add_help=False,
     )
 
+    serve_parser = subparsers.add_parser("serve", help="launch the interactive visual simulator in your browser")
+    serve_parser.add_argument("--host", default="127.0.0.1", help="interface to bind")
+    serve_parser.add_argument("--port", type=int, default=8765, help="port to listen on")
+    serve_parser.add_argument("--no-browser", action="store_true", help="do not open a browser window")
+
+    export_parser = subparsers.add_parser(
+        "export-web",
+        help="precompute the static demo dataset used when the simulator runs without a server",
+    )
+    export_parser.add_argument("--output", type=Path, default=None, help="defaults to the packaged web/data/demo.json")
+    export_parser.add_argument("--runs", type=int, default=400, help="Monte Carlo runs per scenario")
+    export_parser.add_argument("--sensitivity-runs", type=int, default=150, help="runs per sensitivity perturbation")
+    export_parser.add_argument("--seed", type=int, default=42, help="seed for reproducible demo data")
+
     return parser
 
 
@@ -427,6 +441,23 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     args = parser.parse_args(raw_args)
     config = _resolve_config(args) if hasattr(args, "config") or hasattr(args, "preset") else None
+
+    if args.command == "serve":
+        from ayoe.webapp import serve
+
+        return serve(host=args.host, port=args.port, open_browser=not args.no_browser)
+
+    if args.command == "export-web":
+        from ayoe.webapp import DEFAULT_DEMO_PATH, export_demo_dataset
+
+        path = export_demo_dataset(
+            args.output or DEFAULT_DEMO_PATH,
+            runs=args.runs,
+            sensitivity_runs=args.sensitivity_runs,
+            seed=args.seed,
+        )
+        print(f"Wrote static simulator dataset to {path}")
+        return 0
 
     if args.command == "full":
         output_dir = args.output_dir

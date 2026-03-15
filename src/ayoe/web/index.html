@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AYOE Visual Simulator</title>
+  <meta name="description" content="Interactive Monte Carlo simulator of CERN-style antimatter production: from 10^13 protons to a handful of trapped antihydrogen atoms.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='4' fill='%2338e1ff'/%3E%3Cellipse cx='16' cy='16' rx='14' ry='5' fill='none' stroke='%23ff4fd8' stroke-width='2'/%3E%3Cellipse cx='16' cy='16' rx='14' ry='5' fill='none' stroke='%2338e1ff' stroke-width='2' transform='rotate(60 16 16)'/%3E%3C/svg%3E">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="16" cy="16" r="3.6" fill="var(--cyan)"/>
+        <ellipse cx="16" cy="16" rx="13.5" ry="4.8" fill="none" stroke="var(--magenta)" stroke-width="1.6"/>
+        <ellipse cx="16" cy="16" rx="13.5" ry="4.8" fill="none" stroke="var(--cyan)" stroke-width="1.6" transform="rotate(60 16 16)"/>
+        <ellipse cx="16" cy="16" rx="13.5" ry="4.8" fill="none" stroke="var(--amber)" stroke-width="1.6" transform="rotate(120 16 16)"/>
+      </svg>
+      <div>
+        <div class="brand-name">AYOE</div>
+        <div class="brand-sub">Antimatter Yield Optimization Engine</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span class="pill-wrap"><span id="mode-pill" class="pill pill-loading" role="status">Connecting…</span><button type="button" class="explain-btn" data-explain="mode" aria-label="Explain simply" title="Explain it simply">?</button></span>
+      <a class="toplink" href="https://github.com/Zukipany/AYOE" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-text">
+      <h1>From 10<sup>13</sup> protons to a handful of anti-atoms</h1>
+      <p>
+        A Monte Carlo model of CERN's antimatter chain: proton beam → antiproton production →
+        Antiproton Decelerator → ELENA → Penning trap → antihydrogen → magnetic trapping.
+        Every cycle loses about twelve orders of magnitude. Change the machine and watch where the yield goes.
+      </p>
+      <div class="tour-row">
+        <button type="button" id="tour-btn" class="tour-btn">🧸 Explain it like I'm 4</button>
+        <span class="muted small">or tap any <span class="explain-dot" aria-hidden="true">?</span> bubble to learn what it means</span>
+      </div>
+    </div>
+
+    <div class="pipeline-card">
+      <div class="pipeline-head">
+        <div>
+          <div class="eyebrow">Live particle pipeline <button type="button" class="explain-btn" data-explain="pipeline" aria-label="Explain simply" title="Explain it simply">?</button></div>
+          <div id="pipeline-caption" class="pipeline-caption">Waiting for the first simulation…</div>
+        </div>
+        <div class="segmented" role="group" aria-label="Which run to animate">
+          <button type="button" data-sample="worst">Worst</button>
+          <button type="button" data-sample="median" class="active">Median</button>
+          <button type="button" data-sample="best">Best</button>
+          <button type="button" id="replay-btn" class="ghost" title="Replay animation">↻</button>
+        </div>
+        <button type="button" class="explain-btn" data-explain="samples" aria-label="Explain simply" title="Explain it simply">?</button>
+      </div>
+      <canvas id="pipeline-canvas" aria-label="Animated particles flowing through the eight production stages"></canvas>
+      <div id="stage-strip" class="stage-strip"></div>
+      <p class="hint">Dot density is on a log scale: each surviving dot stands for an order of magnitude, not one particle. Dots slow down as the beam is decelerated.</p>
+    </div>
+  </section>
+
+  <section class="kpis" aria-live="polite">
+    <div class="kpi kpi-hero"><span class="kpi-label">Median usable anti-atoms / cycle</span><button type="button" class="explain-btn" data-explain="kpi:median" aria-label="Explain simply" title="Explain it simply">?</button><span id="kpi-median" class="kpi-value">–</span><span id="kpi-median-sub" class="kpi-sub"></span></div>
+    <div class="kpi"><span class="kpi-label">90% interval</span><button type="button" class="explain-btn" data-explain="kpi:interval" aria-label="Explain simply" title="Explain it simply">?</button><span id="kpi-interval" class="kpi-value">–</span><span class="kpi-sub">q05 – q95 across runs</span></div>
+    <div class="kpi"><span class="kpi-label">Mean</span><button type="button" class="explain-btn" data-explain="kpi:mean" aria-label="Explain simply" title="Explain it simply">?</button><span id="kpi-mean" class="kpi-value">–</span><span id="kpi-cv" class="kpi-sub"></span></div>
+    <div class="kpi"><span class="kpi-label">Near-zero risk</span><button type="button" class="explain-btn" data-explain="kpi:risk" aria-label="Explain simply" title="Explain it simply">?</button><span id="kpi-risk" class="kpi-value">–</span><span id="kpi-risk-sub" class="kpi-sub"></span></div>
+    <div class="kpi"><span class="kpi-label">Anti-atoms / hour</span><button type="button" class="explain-btn" data-explain="kpi:rate" aria-label="Explain simply" title="Explain it simply">?</button><span id="kpi-rate" class="kpi-value">–</span><span id="kpi-rate-sub" class="kpi-sub"></span></div>
+    <div class="kpi"><span class="kpi-label">Top bottleneck</span><button type="button" class="explain-btn" data-explain="kpi:bottleneck" aria-label="Explain simply" title="Explain it simply">?</button><span id="kpi-bottleneck" class="kpi-value kpi-text">–</span><span id="kpi-bottleneck-sub" class="kpi-sub"></span></div>
+  </section>
+
+  <main class="workspace">
+    <aside class="controls" aria-label="Simulation controls">
+      <div class="control-block">
+        <div class="control-title-row"><label class="control-title" for="scenario-select">Operating scenario</label><button type="button" class="explain-btn" data-explain="controls:scenario" aria-label="Explain simply" title="Explain it simply">?</button></div>
+        <select id="scenario-select"></select>
+        <p id="scenario-desc" class="muted small"></p>
+      </div>
+
+      <div id="static-note" class="note" hidden>
+        <strong>Static demo.</strong> These results were precomputed. To move the sliders and run the engine live:
+        <code>pip install -e . &amp;&amp; ayoe serve</code>
+      </div>
+
+      <div class="control-block">
+        <div class="control-title-row"><div class="control-title">Machine &amp; physics</div><button type="button" class="explain-btn" data-explain="controls:machine" aria-label="Explain simply" title="Explain it simply">?</button></div>
+        <div id="beam-controls" class="sliders"></div>
+        <div class="slider-row">
+          <label for="volatility">Machine volatility <span class="muted">(shock &amp; jitter)</span></label>
+          <output id="volatility-out">×1.00</output>
+          <input id="volatility" type="range" min="0" max="3" step="0.05" value="1">
+        </div>
+      </div>
+
+      <details class="control-block">
+        <summary class="control-title">Stage efficiency multipliers <button type="button" class="explain-btn" data-explain="controls:stages" aria-label="Explain simply" title="Explain it simply">?</button></summary>
+        <div id="stage-controls" class="sliders"></div>
+      </details>
+
+      <div class="control-block run-block">
+        <div class="control-title-row"><div class="control-title">Tries &amp; dice</div><button type="button" class="explain-btn" data-explain="controls:runs" aria-label="Explain simply" title="Explain it simply">?</button></div>
+        <div class="run-grid">
+          <label>Runs
+            <select id="runs-select">
+              <option value="200">200</option>
+              <option value="400" selected>400</option>
+              <option value="1000">1,000</option>
+              <option value="2500">2,500</option>
+            </select>
+          </label>
+          <label>Seed
+            <span class="seed-wrap"><input id="seed-input" type="number" value="42" min="0"><button type="button" id="seed-random" class="ghost" title="Random seed">🎲</button></span>
+          </label>
+        </div>
+        <label class="check"><input id="auto-run" type="checkbox" checked> Re-run automatically when a slider moves</label>
+        <div class="button-row">
+          <button type="button" id="run-btn" class="primary">Run simulation</button>
+          <button type="button" id="reset-btn" class="ghost">Reset</button>
+        </div>
+        <div id="run-status" class="muted small" role="status"></div>
+      </div>
+    </aside>
+
+    <div class="charts">
+      <article class="card card-wide">
+        <header><h2>Survival funnel <button type="button" class="explain-btn" data-explain="chart:funnel" aria-label="Explain simply" title="Explain it simply">?</button></h2><p>Particles left after each stage. Line: median run. Band: 5–95% of runs. Faint lines: individual cycles.</p></header>
+        <div id="chart-funnel" class="chart"></div>
+      </article>
+      <article class="card">
+        <header><h2>Yield distribution <button type="button" class="explain-btn" data-explain="chart:hist" aria-label="Explain simply" title="Explain it simply">?</button></h2><p>Final usable anti-atoms per cycle across all Monte Carlo runs.</p></header>
+        <div id="chart-hist" class="chart"></div>
+      </article>
+      <article class="card">
+        <header><h2>Where the yield is lost <button type="button" class="explain-btn" data-explain="chart:loss" aria-label="Explain simply" title="Explain it simply">?</button></h2><p>Each stage's share of the pipeline's log-loss (−ln efficiency). Bigger means more leverage.</p></header>
+        <div id="chart-loss" class="chart"></div>
+      </article>
+      <article class="card">
+        <header><h2>Machine regimes <button type="button" class="explain-btn" data-explain="chart:regimes" aria-label="Explain simply" title="Explain it simply">?</button></h2><p>Every run draws a hidden machine state. Bar: mean yield. Label: share of runs.</p></header>
+        <div id="chart-regimes" class="chart"></div>
+      </article>
+      <article class="card">
+        <header><h2>What drives the spread <button type="button" class="explain-btn" data-explain="chart:corr" aria-label="Explain simply" title="Explain it simply">?</button></h2><p>Spearman correlation between each stage's sampled efficiency and the final yield.</p></header>
+        <div id="chart-corr" class="chart"></div>
+      </article>
+    </div>
+  </main>
+
+  <section class="section">
+    <article class="card">
+      <header class="card-head-row">
+        <div><h2>Sensitivity tornado <button type="button" class="explain-btn" data-explain="chart:sens" aria-label="Explain simply" title="Explain it simply">?</button></h2><p>Each input is moved ±10% while every random draw stays the same (common random numbers). Bars show the change in mean yield.</p></div>
+        <button type="button" id="sens-btn" class="primary">Run sensitivity</button>
+      </header>
+      <div id="sens-status" class="muted small"></div>
+      <div id="chart-sens" class="chart"></div>
+    </article>
+  </section>
+
+  <section class="section">
+    <article class="card">
+      <header class="card-head-row">
+        <div><h2>Scenario comparison <button type="button" class="explain-btn" data-explain="chart:scen" aria-label="Explain simply" title="Explain it simply">?</button></h2><p>All eight operating modes simulated with the same seed. Box: 25–75%. Whiskers: 5–95%. Click a row to load it.</p></div>
+        <button type="button" id="scen-btn" class="primary">Compare scenarios</button>
+      </header>
+      <div id="chart-scen" class="chart"></div>
+      <div class="table-wrap"><table id="scen-table" class="data-table"></table></div>
+    </article>
+  </section>
+
+  <section class="section">
+    <article class="card">
+      <header><h2>Calibration anchors <button type="button" class="explain-btn" data-explain="calibration" aria-label="Explain simply" title="Explain it simply">?</button></h2><p>Stage centres come from public CERN machine reports and ALPHA results. Low-confidence values are engineering estimates and are labelled as such.</p></header>
+      <div class="table-wrap"><table id="calib-table" class="data-table"></table></div>
+    </article>
+  </section>
+
+  <footer class="footer">
+    AYOE is an educational stochastic model, not a physics simulation of the AD/ELENA machines.
+    Numbers are calibrated to public orders of magnitude; see the README for assumptions.
+  </footer>
+
+  <div id="tooltip" class="tooltip" role="tooltip" hidden></div>
+  <div id="explain-pop" class="explain-pop" role="dialog" aria-labelledby="explain-title" hidden></div>
+  <script src="data/demo.js"></script>
+  <script src="explain.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

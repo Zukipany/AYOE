@@ -30,7 +30,7 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [tool.setuptools.package-data]
-ayoe = ["presets/*.toml"]
+ayoe = ["presets/*.toml", "web/*.html", "web/*.css", "web/*.js", "web/data/*.js"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

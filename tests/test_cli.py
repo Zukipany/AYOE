@@ -238,3 +238,10 @@ def test_guided_subcommand_dispatches_to_guided_runner(tmp_path, capsys) -> None
     assert "Pipeline Walkthrough" in capsys.readouterr().out
     assert (output_dir / "guided_report.html").exists()
 
+
+def test_export_web_command_writes_dataset(tmp_path, capsys) -> None:
+    target = tmp_path / "demo.js"
+    exit_code = main(["export-web", "--output", str(target), "--runs", "10", "--sensitivity-runs", "10"])
+    assert exit_code == 0
+    assert target.read_text(encoding="utf-8").startswith("window.AYOE_DEMO = ")
+    assert "Wrote static simulator dataset" in capsys.readouterr().out
