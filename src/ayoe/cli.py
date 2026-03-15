@@ -111,6 +111,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="directory for JSON and CSV workflow artifacts",
     )
 
+    subparsers.add_parser(
+        "guided",
+        help="guided walkthrough with plain-language interpretation (see `ayoe guided --help`)",
+        add_help=False,
+    )
+
     return parser
 
 
@@ -169,6 +175,13 @@ def _scenario_payload(report: ScenarioComparisonReport) -> dict[str, object]:
     return report.to_dict()
 
 
+def _format_efficiency(value: float) -> str:
+    # Antiproton creation (~1e-6) and anti-atom trapping (~1e-4) would print as 0.000000.
+    if 0.0 < abs(value) < 1e-3:
+        return f"{value:.3e}"
+    return f"{value:.6f}"
+
+
 def _format_ratio(value: float) -> str:
     if value >= 0.01:
         return f"{value:.2%}"
@@ -188,9 +201,9 @@ def _print_cycle_summary(cycle: CycleResult) -> None:
                 "input": metric.input_count,
                 "output": metric.output_count,
                 "loss": metric.lost_count,
-                "base_eff": round(metric.sampled_base_efficiency, 6),
-                "efficiency": round(metric.effective_efficiency, 6),
-                "realized_eff": round(metric.realized_efficiency, 6),
+                "base_eff": _format_efficiency(metric.sampled_base_efficiency),
+                "efficiency": _format_efficiency(metric.effective_efficiency),
+                "realized_eff": _format_efficiency(metric.realized_efficiency),
                 "latent_mod": round(metric.latent_modifier, 6),
                 "shock": round(metric.sampled_shock, 6),
                 "loss_pct": f"{metric.stage_loss_ratio:.2%}",
@@ -404,6 +417,10 @@ def _run_full_workflow(
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     raw_args = list(argv) if argv is not None else sys.argv[1:]
+    if raw_args and raw_args[0] == "guided":
+        from ayoe.enhanced_main import main as guided_main
+
+        return guided_main(raw_args[1:])
     defaulted_to_full = not raw_args
     if defaulted_to_full:
         raw_args = ["full", "--preset", DEFAULT_PRESET]

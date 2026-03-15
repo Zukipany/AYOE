@@ -135,13 +135,14 @@ def explain_scenarios(report: ScenarioComparisonReport) -> str:
 
 def explain_charts() -> str:
     return (
-        "The charts translate raw simulation output into patterns the eye can inspect quickly. The stage bar chart "
-        "shows where particles are entering, surviving, and dropping away. The cumulative survival curve shows the "
+        "The charts translate raw simulation output into patterns the eye can inspect quickly. The log-scale particle "
+        "funnel shows how many particles survive each stage and at which energy. The cumulative survival curve shows the "
         "full shrinkage profile of the pipeline. The Monte Carlo histogram shows whether outcomes cluster tightly or "
         "spread into a wide uncertainty band. The scenario boxplot compares operating modes directly. The bottleneck "
-        "chart shows which stage most often limits performance. The sensitivity chart ranks which parameters deserve "
-        "the most attention. The heatmap shows how late-stage control changes can bend final yield. The cost-vs-yield "
-        "scatter helps distinguish productive scenarios from merely expensive ones."
+        "chart splits the pipeline's log-loss by stage and shows which stage's randomness drives run-to-run variation. "
+        "The sensitivity tornado ranks which parameters deserve the most attention. The heatmap shows how late-stage "
+        "control changes can bend final yield. The cost-vs-yield scatter helps distinguish productive scenarios from "
+        "merely expensive ones."
     )
 
 

@@ -200,8 +200,41 @@ def test_full_command_writes_all_artifacts(tmp_path, capsys) -> None:
         "cumulative_survival_curve.png",
         "monte_carlo_histogram.png",
         "scenario_boxplot.png",
-        "bottleneck_frequency.png",
+        "bottleneck_analysis.png",
         "sensitivity_ranking.png",
         "yield_heatmap.png",
         "cost_vs_yield_scatter.png",
     }.issubset({path.name for path in charts_dir.iterdir() if path.is_file()})
+
+
+def test_run_command_prints_tiny_efficiencies_in_scientific_notation(capsys) -> None:
+    assert main(["run", "--preset", "baseline", "--seed", "7"]) == 0
+    output = capsys.readouterr().out
+    creation_row = next(line for line in output.splitlines() if line.strip().startswith("Antiproton Creation"))
+    assert "e-07" in creation_row or "e-06" in creation_row
+    assert "0.000000" not in creation_row
+
+
+def test_guided_subcommand_dispatches_to_guided_runner(tmp_path, capsys) -> None:
+    output_dir = tmp_path / "guided"
+    exit_code = main(
+        [
+            "guided",
+            "--monte-carlo-runs",
+            "4",
+            "--sensitivity-runs",
+            "3",
+            "--scenario-runs",
+            "3",
+            "--scenarios",
+            "baseline",
+            "--seed",
+            "1",
+            "--output-dir",
+            str(output_dir),
+        ]
+    )
+    assert exit_code == 0
+    assert "Pipeline Walkthrough" in capsys.readouterr().out
+    assert (output_dir / "guided_report.html").exists()
+

@@ -6,8 +6,12 @@ from pathlib import Path
 
 import numpy as np
 
-from ayoe.analytics import compute_bottleneck_frequencies, compute_run_diagnostics
-from ayoe.constants import DEFAULT_HEATMAP_RUNS
+from ayoe.analytics import (
+    compute_bottlenecks,
+    compute_run_diagnostics,
+    compute_stage_efficiency_correlations,
+)
+from ayoe.constants import DEFAULT_HEATMAP_RUNS, STAGE_ENERGY_TARGETS_MEV
 from ayoe.engine import run_monte_carlo
 from ayoe.models import (
     CycleResult,
@@ -35,8 +39,29 @@ def _apply_plot_style() -> None:
             "grid.alpha": 0.18,
             "font.size": 10,
             "savefig.dpi": 160,
+            "axes.spines.top": False,
+            "axes.spines.right": False,
         }
     )
+
+
+def _format_count(value: float) -> str:
+    if value >= 1e5:
+        mantissa, exponent = f"{value:.2e}".split("e")
+        return f"{mantissa}e{int(exponent)}"
+    return f"{value:,.0f}"
+
+
+def _format_energy(mev: float) -> str:
+    if mev >= 1_000.0:
+        return f"{mev / 1_000.0:g} GeV"
+    if mev >= 1.0:
+        return f"{mev:g} MeV"
+    return f"{mev * 1_000.0:g} keV"
+
+
+def _parameter_label(path: str) -> str:
+    return path.replace("stages.", "").replace(".nominal_efficiency", " efficiency").replace("beam.", "")
 
 
 def _plt():
@@ -51,23 +76,49 @@ def _plt():
 def plot_pipeline_stage_bars(cycle: CycleResult, path: str | Path) -> Path:
     output_path = Path(path)
     diagnostics = compute_run_diagnostics(cycle)
-    labels = [metric.stage_label for metric in diagnostics.stage_metrics]
-    inputs = np.array([metric.input_count for metric in diagnostics.stage_metrics], dtype=float)
-    outputs = np.array([metric.output_count for metric in diagnostics.stage_metrics], dtype=float)
-    losses = np.array([metric.lost_count for metric in diagnostics.stage_metrics], dtype=float)
+    metrics = diagnostics.stage_metrics
+    # Counts span ~13 orders of magnitude (protons -> trapped anti-atoms), so a
+    # linear axis hides every stage after antiproton creation.
+    labels = ["Protons on target"] + [metric.stage_label for metric in metrics]
+    counts = np.array([metrics[0].input_count] + [metric.output_count for metric in metrics], dtype=float)
+    plotted = np.maximum(counts, 0.8)
     x = np.arange(len(labels))
 
     _apply_plot_style()
     plt = _plt()
-    fig, ax = plt.subplots(figsize=(12, 6))
-    ax.bar(x - 0.25, inputs, width=0.25, label="Input", color="#5B8FF9")
-    ax.bar(x, outputs, width=0.25, label="Output", color="#61DDAA")
-    ax.bar(x + 0.25, losses, width=0.25, label="Loss", color="#F6BD16")
+    fig, ax = plt.subplots(figsize=(13, 6.5))
+    colors = plt.cm.plasma(np.linspace(0.12, 0.85, len(labels)))
+    ax.bar(x, plotted, color=colors, width=0.68, zorder=2)
+    ax.set_yscale("log")
+    ax.set_ylim(0.5, plotted.max() * 40)
+    for index, count in enumerate(counts):
+        ax.text(index, plotted[index] * 1.6, _format_count(count), ha="center", va="bottom", fontsize=9, fontweight="bold")
+        if index > 0:
+            metric = metrics[index - 1]
+            efficiency = metric.realized_efficiency
+            label = f"{efficiency:.1%}" if efficiency >= 0.001 else f"{efficiency:.1e}"
+            ax.text(
+                index,
+                0.62,
+                f"x {label}",
+                ha="center",
+                va="bottom",
+                fontsize=8,
+                fontweight="bold",
+                bbox={"boxstyle": "round,pad=0.2", "facecolor": "white", "alpha": 0.85, "linewidth": 0},
+            )
+    energies = [STAGE_ENERGY_TARGETS_MEV["proton_beam_input"]] + [
+        STAGE_ENERGY_TARGETS_MEV[metric.stage_name] for metric in metrics
+    ]
     ax.set_xticks(x)
-    ax.set_xticklabels(labels, rotation=35, ha="right")
-    ax.set_ylabel("Particle count")
-    ax.set_title("Pipeline Stage Accounting")
-    ax.legend()
+    ax.set_xticklabels(
+        [f"{label}\n{_format_energy(energy)}" for label, energy in zip(labels, energies)],
+        rotation=30,
+        ha="right",
+        fontsize=9,
+    )
+    ax.set_ylabel("Particles surviving (log scale)")
+    ax.set_title(f"Particle Funnel: one {cycle.config_name} cycle ({cycle.final_yield} usable anti-atoms)")
     fig.tight_layout()
     fig.savefig(output_path)
     plt.close(fig)
@@ -137,41 +188,70 @@ def plot_scenario_boxplot(scenario_cycles: dict[str, list[CycleResult]], path: s
     return output_path
 
 
-def plot_bottleneck_frequency(cycles: list[CycleResult], path: str | Path) -> Path:
+def plot_bottleneck_analysis(cycles: list[CycleResult], path: str | Path) -> Path:
     output_path = Path(path)
-    rows = compute_bottleneck_frequencies(cycles)
-    labels = [row["stage_label"] for row in rows]
-    values = [row["frequency"] for row in rows]
+    share_rows = compute_bottlenecks(cycles)
+    correlation_rows = compute_stage_efficiency_correlations(cycles)
 
     _apply_plot_style()
     plt = _plt()
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.barh(labels, values, color="#F6BD16")
-    ax.set_xlabel("Frequency")
-    ax.set_title("Operational Bottleneck Frequency")
+    fig, (left, right) = plt.subplots(1, 2, figsize=(13, 5.5))
+
+    share_labels = [row["stage_label"] for row in share_rows][::-1]
+    share_values = [row["log_loss_share"] for row in share_rows][::-1]
+    left.barh(share_labels, share_values, color="#7262FD")
+    for y, value in enumerate(share_values):
+        left.text(value + 0.01, y, f"{value:.0%}", va="center", fontsize=9)
+    left.set_xlim(0, max(share_values) * 1.2 if share_values else 1)
+    left.set_xlabel("Mean share of pipeline log-loss  (-ln efficiency)")
+    left.set_title("Where the Yield Is Lost")
+
+    correlation_labels = [row["stage_label"] for row in correlation_rows][::-1]
+    correlation_values = [row["spearman_correlation"] for row in correlation_rows][::-1]
+    right.barh(
+        correlation_labels,
+        correlation_values,
+        color=["#30BF78" if value >= 0 else "#F4664A" for value in correlation_values],
+    )
+    right.axvline(0, color="#333333", linewidth=0.8)
+    right.set_xlim(min(-0.05, min(correlation_values, default=0) * 1.15), 1.0)
+    right.set_xlabel("Spearman correlation of stage efficiency with final yield")
+    right.set_title("What Drives Run-to-Run Variation")
     fig.tight_layout()
     fig.savefig(output_path)
     plt.close(fig)
     return output_path
 
 
-def plot_sensitivity_ranking(report: SensitivityReport, path: str | Path, *, top_n: int = 10) -> Path:
+def plot_sensitivity_ranking(report: SensitivityReport, path: str | Path, *, top_n: int = 12) -> Path:
     output_path = Path(path)
-    grouped: dict[str, float] = {}
+    grouped: dict[str, dict[str, float]] = {}
     for row in report.perturbations:
-        score = abs(row["relative_change"]) if row["relative_change"] is not None else 0.0
-        grouped[row["parameter"]] = max(grouped.get(row["parameter"], 0.0), score)
+        change = row["relative_change"] if row["relative_change"] is not None else 0.0
+        grouped.setdefault(row["parameter"], {})[row["direction"]] = change
 
-    top_rows = sorted(grouped.items(), key=lambda row: row[1], reverse=True)[:top_n]
-    labels = [name.replace("stages.", "").replace(".nominal_efficiency", "") for name, _ in top_rows]
-    values = [value for _, value in top_rows]
+    ranked = sorted(
+        grouped.items(),
+        key=lambda item: max(abs(value) for value in item[1].values()),
+        reverse=True,
+    )[:top_n][::-1]
+    labels = [_parameter_label(name) for name, _ in ranked]
+    downs = [values.get("down", 0.0) for _, values in ranked]
+    ups = [values.get("up", 0.0) for _, values in ranked]
+    y = np.arange(len(labels))
 
     _apply_plot_style()
     plt = _plt()
-    fig, ax = plt.subplots(figsize=(11, 6))
-    ax.barh(labels[::-1], values[::-1], color="#30BF78")
-    ax.set_xlabel("Absolute relative change in mean yield")
-    ax.set_title("Sensitivity Ranking")
+    fig, ax = plt.subplots(figsize=(11, 6.5))
+    ax.barh(y, downs, color="#F4664A", label=f"parameter -{report.delta:.0%}")
+    ax.barh(y, ups, color="#30BF78", label=f"parameter +{report.delta:.0%}")
+    ax.axvline(0, color="#333333", linewidth=0.8)
+    ax.set_yticks(y)
+    ax.set_yticklabels(labels)
+    ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda value, _: f"{value:+.0%}"))
+    ax.set_xlabel("Change in mean final yield")
+    ax.set_title(f"Sensitivity Tornado ({report.config_name}, {report.runs} runs per perturbation)")
+    ax.legend(loc="lower right")
     fig.tight_layout()
     fig.savefig(output_path)
     plt.close(fig)
@@ -188,9 +268,9 @@ def build_parameter_heatmap(
     mixing_multipliers = [0.85, 0.95, 1.00, 1.10, 1.20]
     matrix = np.zeros((len(mixing_multipliers), len(trap_multipliers)), dtype=float)
 
-    root = np.random.SeedSequence(seed)
-    child_sequences = root.spawn(len(trap_multipliers) * len(mixing_multipliers))
-    child_index = 0
+    # Every cell reuses the same seed (common random numbers) so differences
+    # between cells come from the parameters rather than sampling noise.
+    cell_seed = int(np.random.SeedSequence(seed).generate_state(1, dtype=np.uint64)[0])
     for y, mixing_scale in enumerate(mixing_multipliers):
         for x, trap_scale in enumerate(trap_multipliers):
             scenario = config.copy()
@@ -199,9 +279,7 @@ def build_parameter_heatmap(
                 max(scenario.stages["trap_capture"].nominal_efficiency * trap_scale, 0.001),
                 0.95,
             )
-            scenario_seed = int(child_sequences[child_index].generate_state(1, dtype=np.uint64)[0])
-            child_index += 1
-            _, summary = run_monte_carlo(scenario, runs=runs, seed=scenario_seed)
+            _, summary = run_monte_carlo(scenario, runs=runs, seed=cell_seed)
             matrix[y, x] = float(summary.stats["mean"] or 0.0)
     return matrix, trap_multipliers, mixing_multipliers
 
@@ -227,6 +305,11 @@ def plot_parameter_heatmap(
     ax.set_xlabel("Trap efficiency multiplier")
     ax.set_ylabel("Mixing efficiency multiplier")
     ax.set_title("Late-Stage Yield Surface")
+    for row in range(matrix.shape[0]):
+        for column in range(matrix.shape[1]):
+            value = matrix[row, column]
+            shade = "white" if value > (matrix.min() + matrix.max()) / 2 else "#1d1d1d"
+            ax.text(column, row, f"{value:.1f}", ha="center", va="center", fontsize=9, color=shade)
     cbar = fig.colorbar(image, ax=ax)
     cbar.set_label("Mean final yield")
     fig.tight_layout()
@@ -269,7 +352,7 @@ def write_full_report_artifacts(
         "cumulative_survival_chart": plot_cumulative_survival_curve(cycle, report_dir / "cumulative_survival_curve.png"),
         "monte_carlo_histogram": plot_monte_carlo_histogram(monte_carlo_cycles, report_dir / "monte_carlo_histogram.png"),
         "scenario_boxplot": plot_scenario_boxplot(scenario_cycles, report_dir / "scenario_boxplot.png"),
-        "bottleneck_frequency_chart": plot_bottleneck_frequency(monte_carlo_cycles, report_dir / "bottleneck_frequency.png"),
+        "bottleneck_analysis_chart": plot_bottleneck_analysis(monte_carlo_cycles, report_dir / "bottleneck_analysis.png"),
         "sensitivity_ranking_chart": plot_sensitivity_ranking(sensitivity_report, report_dir / "sensitivity_ranking.png"),
         "parameter_heatmap": plot_parameter_heatmap(config, report_dir / "yield_heatmap.png", seed=seed),
         "cost_yield_scatter": plot_cost_vs_yield(scenario_report, report_dir / "cost_vs_yield_scatter.png"),

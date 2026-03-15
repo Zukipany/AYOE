@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from collections import defaultdict
 from typing import Any
 
@@ -19,7 +20,7 @@ from ayoe.models import (
 
 
 def _clamp01(value: float) -> float:
-    return float(np.clip(value, 0.0, 1.0))
+    return float(min(max(value, 0.0), 1.0))
 
 
 def _alignment_score(actual: float, expected: float) -> float:
@@ -294,31 +295,48 @@ def compute_summary_stats(
 
 
 def compute_bottlenecks(cycles: list[CycleResult]) -> list[dict[str, Any]]:
+    """Rank operational stages by their share of the pipeline's log-loss.
+
+    Yield is a product of stage efficiencies, so a stage's contribution to the
+    total shortfall is additive in log space: ``-ln(efficiency)``. Raw lost
+    counts are kept for reference but are dominated by whichever stage handles
+    the most particles, which is why the proton-to-antiproton conversion is
+    excluded here and reported as the scale bottleneck instead.
+    """
     loss_totals: dict[str, float] = defaultdict(float)
     efficiency_totals: dict[str, float] = defaultdict(float)
+    log_loss_share_totals: dict[str, float] = defaultdict(float)
     labels: dict[str, str] = {}
 
     for cycle in cycles:
-        for stage in cycle.stage_results:
+        operational = [stage for stage in cycle.stage_results if stage.stage_name in OPERATIONAL_STAGES]
+        log_losses = {
+            stage.stage_name: -math.log(max(stage.effective_efficiency, 1e-12)) for stage in operational
+        }
+        cycle_log_loss = sum(log_losses.values()) or 1.0
+        for stage in operational:
             labels[stage.stage_name] = stage.stage_label
             loss_totals[stage.stage_name] += stage.lost_count
             efficiency_totals[stage.stage_name] += stage.effective_efficiency
+            log_loss_share_totals[stage.stage_name] += log_losses[stage.stage_name] / cycle_log_loss
 
     total_losses = sum(loss_totals.values()) or 1.0
     run_count = max(len(cycles), 1)
     rows = []
     for stage_name, total_loss in loss_totals.items():
-        mean_loss = total_loss / run_count
+        mean_efficiency = efficiency_totals[stage_name] / run_count
         rows.append(
             {
                 "stage_name": stage_name,
                 "stage_label": labels[stage_name],
-                "mean_lost_count": float(mean_loss),
+                "log_loss_share": float(log_loss_share_totals[stage_name] / run_count),
+                "mean_effective_efficiency": float(mean_efficiency),
+                "yield_multiplier_if_perfect": float(1.0 / max(mean_efficiency, 1e-12)),
+                "mean_lost_count": float(total_loss / run_count),
                 "loss_share": float(total_loss / total_losses),
-                "mean_effective_efficiency": float(efficiency_totals[stage_name] / run_count),
             }
         )
-    rows.sort(key=lambda row: row["loss_share"], reverse=True)
+    rows.sort(key=lambda row: row["log_loss_share"], reverse=True)
     return rows
 
 

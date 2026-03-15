@@ -18,6 +18,19 @@ class ParameterSpec:
     minimum: float
     maximum: float | None = None
     integer: bool = False
+    group: str = "stage"
+
+
+PHYSICS_PARAMETER_SPECS: tuple[ParameterSpec, ...] = (
+    ParameterSpec("beam.beam_stability", minimum=0.0, maximum=1.0, group="physics"),
+    ParameterSpec("beam.target_density", minimum=1e-6, group="physics"),
+    ParameterSpec("beam.pulse_length_ns", minimum=1e-6, group="physics"),
+    ParameterSpec("beam.magnetic_field_t", minimum=1e-6, group="physics"),
+    ParameterSpec("beam.vacuum_quality", minimum=0.0, maximum=1.0, group="physics"),
+    ParameterSpec("beam.trap_temperature_k", minimum=1e-6, group="physics"),
+    ParameterSpec("beam.mixing_efficiency", minimum=0.0, maximum=1.0, group="physics"),
+    ParameterSpec("beam.positron_inventory_scale", minimum=1e-6, group="physics"),
+)
 
 
 def run_sensitivity_analysis(
@@ -53,15 +66,25 @@ def run_sensitivity_analysis(
             mean_yield = float(summary.stats["mean"] or 0.0)
             delta_yield = mean_yield - base_mean
             relative_change = (delta_yield / base_mean) if base_mean else None
+            # Bounded parameters (e.g. vacuum quality) can move less than the
+            # requested delta, so elasticity uses the change actually applied.
+            parameter_change = (float(perturbed_value) - float(base_value)) / float(base_value)
+            elasticity = (
+                relative_change / parameter_change
+                if relative_change is not None and parameter_change
+                else None
+            )
             perturbations.append(
                 {
                     "parameter": spec.path,
+                    "group": spec.group,
                     "direction": "down" if direction < 0 else "up",
                     "base_value": base_value,
                     "perturbed_value": perturbed_value,
                     "mean_yield": mean_yield,
                     "delta_mean_yield": delta_yield,
                     "relative_change": relative_change,
+                    "elasticity": elasticity,
                     "scenario_seed": base_seed,
                 }
             )
@@ -83,7 +106,8 @@ def run_sensitivity_analysis(
 
 
 def _parameter_specs(config: SimulationConfig) -> list[ParameterSpec]:
-    specs = [ParameterSpec("beam.proton_count", minimum=1, integer=True)]
+    specs = [ParameterSpec("beam.proton_count", minimum=1, integer=True, group="beam")]
+    specs.extend(PHYSICS_PARAMETER_SPECS)
     specs.extend(
         ParameterSpec(f"stages.{stage_name}.nominal_efficiency", minimum=0.0, maximum=1.0)
         for stage_name in STAGE_SEQUENCE

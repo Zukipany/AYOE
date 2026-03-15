@@ -459,8 +459,8 @@ def scaled_calibration_bounds(
     high = calibration.distribution.high * scale
 
     if calibration.units.endswith("probability") or calibration.units.startswith("usable atoms"):
-        low = float(np.clip(low, 0.0, 1.0))
-        high = float(np.clip(high, low + 1e-12, 1.0))
+        low = float(min(max(low, 0.0), 1.0))
+        high = float(min(max(high, low + 1e-12), 1.0))
     return low, high
 
 
@@ -470,12 +470,12 @@ def sample_calibrated_probability(
     rng: np.random.Generator,
 ) -> float:
     low, high = scaled_calibration_bounds(calibration, scenario_center)
-    if np.isclose(high, low):
+    if abs(high - low) <= 1e-8 + 1e-5 * abs(low):  # np.isclose tolerance
         return low
 
     concentration = max(calibration.distribution.concentration, 2.0)
     scaled_mean = (scenario_center - low) / (high - low)
-    scaled_mean = float(np.clip(scaled_mean, 1e-6, 1.0 - 1e-6))
+    scaled_mean = float(min(max(scaled_mean, 1e-6), 1.0 - 1e-6))
     alpha = max(scaled_mean * concentration, 1e-3)
     beta = max((1.0 - scaled_mean) * concentration, 1e-3)
     draw = float(rng.beta(alpha, beta))
@@ -491,11 +491,11 @@ def sample_lognormal_around_center(
     log_center = np.log(center)
     sigma = max((np.log(high) - np.log(low)) / 4.0, 1e-6)
     value = float(rng.lognormal(mean=log_center, sigma=sigma))
-    return float(np.clip(value, low, high))
+    return float(min(max(value, low), high))
 
 
 def _clamp_factor(value: float, lower: float = 0.55, upper: float = 1.45) -> float:
-    return float(np.clip(value, lower, upper))
+    return float(min(max(value, lower), upper))
 
 
 def _bounded_geometric_mean(

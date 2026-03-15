@@ -18,7 +18,12 @@ from ayoe.models import BeamConfig, PipelineState, RunLatentState, StageConfig, 
 
 
 def _clamp(value: float, lower: float, upper: float) -> float:
-    return float(np.clip(value, lower, upper))
+    return float(min(max(value, lower), upper))
+
+
+def _isclose(a: float, b: float) -> bool:
+    # Same tolerance as np.isclose, without the per-call array overhead.
+    return abs(a - b) <= 1e-8 + 1e-5 * abs(b)
 
 
 def _inverse_ratio(value: float, baseline: float) -> float:
@@ -166,7 +171,7 @@ def _sample_stage_base_efficiency(
     stage: StageConfig,
     rng: np.random.Generator,
 ) -> float:
-    if np.isclose(stage.min_effective_efficiency, stage.max_effective_efficiency):
+    if _isclose(stage.min_effective_efficiency, stage.max_effective_efficiency):
         return float(stage.nominal_efficiency)
 
     calibration = get_parameter_calibration(f"stages.{stage_name}.nominal_efficiency")

@@ -1,7 +1,7 @@
 """Non-invasive plotting wrappers around the existing reporting module."""
 
 from ayoe.reporting import (
-    plot_bottleneck_frequency,
+    plot_bottleneck_analysis,
     plot_cost_vs_yield,
     plot_cumulative_survival_curve,
     plot_monte_carlo_histogram,
@@ -13,7 +13,7 @@ from ayoe.reporting import (
 )
 
 __all__ = [
-    "plot_bottleneck_frequency",
+    "plot_bottleneck_analysis",
     "plot_cost_vs_yield",
     "plot_cumulative_survival_curve",
     "plot_monte_carlo_histogram",

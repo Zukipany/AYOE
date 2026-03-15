@@ -1,11 +1,11 @@
 name = "conservative"
-description = "Lower-throughput placeholder configuration reflecting a less favorable operating day."
+description = "Less favourable operating day: weaker production, warmer traps and lower acceptance."
 near_zero_threshold = 5
-expected_shortfall_alpha = 0.10
-sensitivity_delta = 0.10
+expected_shortfall_alpha = 0.1
+sensitivity_delta = 0.1
 
 [beam]
-proton_count = 2400000000000
+proton_count = 11000000000000
 pulse_length_ns = 20.0
 beam_stability = 0.972
 target_density = 0.96
@@ -16,65 +16,65 @@ mixing_efficiency = 0.83
 beam_jitter_sigma = 0.02
 
 [stages.proton_beam_input]
-nominal_efficiency = 0.992
+nominal_efficiency = 0.978
 control_multiplier = 0.99
 degradation = 0.006
-shock_sigma = 0.010
+shock_sigma = 0.01
 min_effective_efficiency = 0.85
 max_effective_efficiency = 0.999
 
 [stages.antiproton_creation]
-nominal_efficiency = 0.00000023
+nominal_efficiency = 7.0e-7
 control_multiplier = 0.98
 degradation = 0.08
 shock_sigma = 0.09
-min_effective_efficiency = 0.0
-max_effective_efficiency = 0.000001
+min_effective_efficiency = 8.0e-8
+max_effective_efficiency = 3.5e-6
 
 [stages.particle_selection]
-nominal_efficiency = 0.53
+nominal_efficiency = 0.38
 control_multiplier = 0.98
 degradation = 0.04
 shock_sigma = 0.05
 min_effective_efficiency = 0.08
-max_effective_efficiency = 0.90
+max_effective_efficiency = 0.75
 
 [stages.ad_survival]
-nominal_efficiency = 0.69
+nominal_efficiency = 0.74
 control_multiplier = 0.99
 degradation = 0.03
 shock_sigma = 0.04
-min_effective_efficiency = 0.16
+min_effective_efficiency = 0.25
 max_effective_efficiency = 0.95
 
 [stages.elena_survival]
-nominal_efficiency = 0.79
+nominal_efficiency = 0.68
 control_multiplier = 0.99
 degradation = 0.025
 shock_sigma = 0.03
 min_effective_efficiency = 0.22
-max_effective_efficiency = 0.96
+max_effective_efficiency = 0.92
 
 [stages.trap_capture]
-nominal_efficiency = 0.19
+nominal_efficiency = 0.065
 control_multiplier = 0.98
 degradation = 0.06
 shock_sigma = 0.06
-min_effective_efficiency = 0.01
-max_effective_efficiency = 0.55
+min_effective_efficiency = 0.004
+max_effective_efficiency = 0.25
 
 [stages.antihydrogen_formation]
-nominal_efficiency = 0.15
+nominal_efficiency = 0.25
 control_multiplier = 0.98
 degradation = 0.05
 shock_sigma = 0.07
-min_effective_efficiency = 0.01
-max_effective_efficiency = 0.45
+min_effective_efficiency = 0.04
+max_effective_efficiency = 0.55
 
 [stages.final_usable_yield]
-nominal_efficiency = 0.88
+nominal_efficiency = 5.0e-4
 control_multiplier = 0.99
 degradation = 0.02
 shock_sigma = 0.025
-min_effective_efficiency = 0.35
-max_effective_efficiency = 0.97
+min_effective_efficiency = 4.0e-5
+max_effective_efficiency = 0.0025
