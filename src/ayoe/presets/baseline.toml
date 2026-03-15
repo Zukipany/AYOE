@@ -1,0 +1,80 @@
+name = "baseline"
+description = "Balanced literature-inspired placeholder configuration for the AYOE alpha."
+near_zero_threshold = 5
+expected_shortfall_alpha = 0.10
+sensitivity_delta = 0.10
+
+[beam]
+proton_count = 3000000000000
+pulse_length_ns = 18.0
+beam_stability = 0.985
+target_density = 1.0
+magnetic_field_t = 1.1
+vacuum_quality = 0.985
+trap_temperature_k = 0.55
+mixing_efficiency = 0.88
+beam_jitter_sigma = 0.015
+
+[stages.proton_beam_input]
+nominal_efficiency = 0.995
+control_multiplier = 1.0
+degradation = 0.004
+shock_sigma = 0.008
+min_effective_efficiency = 0.90
+max_effective_efficiency = 1.0
+
+[stages.antiproton_creation]
+nominal_efficiency = 0.00000027
+control_multiplier = 1.0
+degradation = 0.06
+shock_sigma = 0.08
+min_effective_efficiency = 0.0
+max_effective_efficiency = 0.000001
+
+[stages.particle_selection]
+nominal_efficiency = 0.58
+control_multiplier = 1.0
+degradation = 0.03
+shock_sigma = 0.04
+min_effective_efficiency = 0.10
+max_effective_efficiency = 0.95
+
+[stages.ad_survival]
+nominal_efficiency = 0.74
+control_multiplier = 1.0
+degradation = 0.025
+shock_sigma = 0.03
+min_effective_efficiency = 0.20
+max_effective_efficiency = 0.98
+
+[stages.elena_survival]
+nominal_efficiency = 0.83
+control_multiplier = 1.0
+degradation = 0.02
+shock_sigma = 0.025
+min_effective_efficiency = 0.25
+max_effective_efficiency = 0.99
+
+[stages.trap_capture]
+nominal_efficiency = 0.24
+control_multiplier = 1.0
+degradation = 0.05
+shock_sigma = 0.05
+min_effective_efficiency = 0.02
+max_effective_efficiency = 0.65
+
+[stages.antihydrogen_formation]
+nominal_efficiency = 0.18
+control_multiplier = 1.0
+degradation = 0.04
+shock_sigma = 0.06
+min_effective_efficiency = 0.01
+max_effective_efficiency = 0.50
+
+[stages.final_usable_yield]
+nominal_efficiency = 0.91
+control_multiplier = 1.0
+degradation = 0.015
+shock_sigma = 0.02
+min_effective_efficiency = 0.40
+max_effective_efficiency = 0.99

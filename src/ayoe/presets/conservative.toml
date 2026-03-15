@@ -1,0 +1,80 @@
+name = "conservative"
+description = "Lower-throughput placeholder configuration reflecting a less favorable operating day."
+near_zero_threshold = 5
+expected_shortfall_alpha = 0.10
+sensitivity_delta = 0.10
+
+[beam]
+proton_count = 2400000000000
+pulse_length_ns = 20.0
+beam_stability = 0.972
+target_density = 0.96
+magnetic_field_t = 1.02
+vacuum_quality = 0.975
+trap_temperature_k = 0.62
+mixing_efficiency = 0.83
+beam_jitter_sigma = 0.02
+
+[stages.proton_beam_input]
+nominal_efficiency = 0.992
+control_multiplier = 0.99
+degradation = 0.006
+shock_sigma = 0.010
+min_effective_efficiency = 0.85
+max_effective_efficiency = 0.999
+
+[stages.antiproton_creation]
+nominal_efficiency = 0.00000023
+control_multiplier = 0.98
+degradation = 0.08
+shock_sigma = 0.09
+min_effective_efficiency = 0.0
+max_effective_efficiency = 0.000001
+
+[stages.particle_selection]
+nominal_efficiency = 0.53
+control_multiplier = 0.98
+degradation = 0.04
+shock_sigma = 0.05
+min_effective_efficiency = 0.08
+max_effective_efficiency = 0.90
+
+[stages.ad_survival]
+nominal_efficiency = 0.69
+control_multiplier = 0.99
+degradation = 0.03
+shock_sigma = 0.04
+min_effective_efficiency = 0.16
+max_effective_efficiency = 0.95
+
+[stages.elena_survival]
+nominal_efficiency = 0.79
+control_multiplier = 0.99
+degradation = 0.025
+shock_sigma = 0.03
+min_effective_efficiency = 0.22
+max_effective_efficiency = 0.96
+
+[stages.trap_capture]
+nominal_efficiency = 0.19
+control_multiplier = 0.98
+degradation = 0.06
+shock_sigma = 0.06
+min_effective_efficiency = 0.01
+max_effective_efficiency = 0.55
+
+[stages.antihydrogen_formation]
+nominal_efficiency = 0.15
+control_multiplier = 0.98
+degradation = 0.05
+shock_sigma = 0.07
+min_effective_efficiency = 0.01
+max_effective_efficiency = 0.45
+
+[stages.final_usable_yield]
+nominal_efficiency = 0.88
+control_multiplier = 0.99
+degradation = 0.02
+shock_sigma = 0.025
+min_effective_efficiency = 0.35
+max_effective_efficiency = 0.97
